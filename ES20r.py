@@ -1,5 +1,8 @@
-"""This file contains code used in ES20r Sports of Physics,
+"""
+This file contains code used in ES20r Sports of Physics,
 by Jason Martinez (jmartinez@seas.harvard.edu).
+
+Last Modified: 09/09/2022
 
 Copyright 2022 Jason Martinez
 License: MIT License (https://opensource.org/licenses/MIT)
@@ -26,7 +29,11 @@ def prep_data(file_path):
         data_m: dataframe with magnetometer (m) data
         data_r: dataframe with rotation vector (r) data
     """ 
-  
+    # Import Libraries:
+    import pandas as pd                 # Python library for data manipulation and analysis
+    import matplotlib.pyplot as plt     # Python library for data visualization
+    import numpy as np                  # Numerical Python
+
     # ---------------- Load Data File-------------------------
     # Load csv content into a Pandas dataframe:
     data = pd.read_csv(file_path, header=None)  # First argument is path to file; `header=None` tells Panda ... 
@@ -281,3 +288,507 @@ def plot_data(file_path, dark_mode=False, quaternion=False):
     fig.tight_layout(pad=2.0)  # To add padding between subplots.
     plt.show()                 # To show the plot.
     fig.savefig(file_path.split('/')[-1][:-4] + '_Figure.png', dpi=400, bbox_inches='tight')   # To save the entire figure.
+
+
+def rot_mat(a, b, c, d):
+    """
+    Input:
+        a: real value component of a quaternion q = a + bi + cj + dk
+        b: 1st imaginary value component 'b', of a quaternion q = a + bi + cj + dk 
+        c: 2nd imaginary value component 'c', of a quaternion q = a + bi + cj + dk 
+        d: 3rd imaginary value component 'd', of a quaternion q = a + bi + cj + dk 
+    Output:
+        rotMat: 3x3 NumPy array with rotation matrix R.
+    """
+
+    # Import Modules:
+    import numpy as np
+
+    # Define components of rotation matrix R:
+    c00 = a ** 2 + b ** 2 - c ** 2 - d ** 2
+    c01 = 2 * (b * c - a * d)
+    c02 = 2 * (b * d + a * c)
+    c10 = 2 * (b * c + a * d)
+    c11 = a ** 2 - b ** 2 + c ** 2 - d ** 2
+    c12 = 2 * (c * d - a * b)
+    c20 = 2 * (b * d - a * c)
+    c21 = 2 * (c * d + a * b)
+    c22 = a ** 2 - b ** 2 - c ** 2 + d ** 2
+
+    rotMat = np.array([[c00, c01, c02], [c10, c11, c12], [c20, c21, c22]])
+    return rotMat
+
+
+def view_quat(a=1, b=0, c=0, d=0, dark_mode=False, swap_xy=False):
+    """
+    Input:
+        a: real value component of a quaternion q = a + bi + cj + dk
+        b: 1st imaginary value component 'b', of a quaternion q = a + bi + cj + dk 
+        c: 2nd imaginary value component 'c', of a quaternion q = a + bi + cj + dk 
+        d: 3rd imaginary value component 'd', of a quaternion q = a + bi + cj + dk 
+        dark_mode: Boolean variable for dark mode plotting: 'True' for dark mode plotting; 'False' for white background
+        swap_xy: Boolean variable for swapping x-axis and y-axis in 3D view of the sensor
+    Output:
+        The function renders the figure of your quaternion and saves the image as a .png file.
+    """
+    # Import Modules:
+    import numpy as np
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
+    import matplotlib.pyplot as plt
+
+    # Normalize quaternion (input must be a unit quaternion)
+    mag = np.sqrt(a**2 + b**2 + c**2 + d**2)
+    a_norm = a/mag
+    b_norm = b/mag
+    c_norm = c/mag
+    d_norm = d/mag
+
+    if mag == 0.0:
+      print("ERROR: Can't Enter a Zero Quaternion")
+
+    # Reset default matplotlib settings:
+    plt.rcdefaults()
+
+    # set global parameters for plotting (optional):
+    plt.rcParams['figure.figsize'] = [14, 6]
+    plt.rcParams.update({'font.size': 14})
+    plt.rcParams["font.family"] = "serif"  # Set font style globally to serif (much nicer than default font style).
+    plot_limit = 8  # constant for x-axis, y-axis, and z-axis length limits
+
+    # Set dark mode style on if dark_mode == True:
+    if dark_mode:  # True if dark_mode == True
+        plt.style.use('dark_background')  # set 'dark_background' sylte on
+        edge_color = 'white'  # set color for legend box to white
+        sensor_color = '#990000' # crimson
+        sensor_alpha = 0.6       # alpha transparency between 0 to 1
+        sensor_edge_color = 'w'  # white
+        x_axis_color = '#ff073a' # neon red
+        y_axis_color = '#04d9ff' # neon blue
+        z_axis_color = '#39FF14' # neon green
+        text_color = 'w'
+        text_background = 'k'
+    else:         # if dark_mode == False 
+        edge_color = 'black'  # set color for legend box to black
+        sensor_color = sensor_color = '#990000' # crimson
+        sensor_alpha = 0.2
+        sensor_edge_color = 'k' # black
+        x_axis_color = 'r' # red
+        y_axis_color = 'b' # blue
+        z_axis_color = 'g' # green
+        text_color = 'k'
+        text_background = 'w'
+
+    # Define sensor dimensions for plotting:
+    width = 4     # y-axis dimension
+    height = 1    # z-axis dimension
+    depth = 6     # x-axis dimension
+
+    # Define 8 points of rectangular prism:
+    pt1 = np.array([-depth/2, -width/2, -height/2 ])
+    pt2 = np.array([depth/2, -width/2, -height/2 ])
+    pt3 = np.array([depth/2, width/2, -height/2 ])
+    pt4 = np.array([-depth/2, width/2, -height/2])
+    pt5 = np.array([-depth/2, -width/2, height/2])
+    pt6 = np.array([depth/2, -width/2, height/2 ])
+    pt7 = np.array([depth/2, width/2, height/2])
+    pt8 = np.array([-depth/2, width/2, height/2])
+
+    # define 6 faces of rectangular prism:
+    long_side_face1 = [[ pt1, pt5, pt6, pt2 ]]
+    long_side_face2 = [[pt3, pt7,  pt8, pt4]]
+    short_side_face1 = [[pt3, pt2, pt6, pt7]]
+    short_side_face2 = [[pt1, pt5, pt8, pt4]]
+    bottom_face = [[pt1, pt2, pt3, pt4]]
+    top_face = [[pt5, pt6, pt7, pt8]]
+
+    # Define vectors representing coordinate axes x, y, and z:
+    arrow_length = depth/2*1.9
+    x_axis = np.array([arrow_length, 0, 0])
+    y_axis = np.array([0, arrow_length, 0 ])
+    z_axis = np.array([ 0, 0, arrow_length ])
+
+    # =============Create Figure 1 of 2: Original sensor orientation================
+    fig = plt.figure()
+    ax = fig.add_subplot(121, projection='3d')
+
+    # Plot each of the 6 faces of the rectangular prism:
+    ax.add_collection3d(Poly3DCollection(long_side_face1, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax.add_collection3d(Poly3DCollection(long_side_face2, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax.add_collection3d(Poly3DCollection(short_side_face1, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax.add_collection3d(Poly3DCollection(short_side_face2, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax.add_collection3d(Poly3DCollection(bottom_face, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax.add_collection3d(Poly3DCollection(top_face, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+
+    # Draw 3 arrows for each local coordinate axis:
+    ax.quiver(0, 0, 0, x_axis[0], x_axis[1], x_axis[2], color=x_axis_color, linewidth=2, linestyle='-') # x-axis
+    ax.quiver(0, 0, 0, y_axis[0], y_axis[1], y_axis[2], color=y_axis_color, linewidth=2, linestyle='-') # y-axis
+    ax.quiver(0, 0, 0, z_axis[0], z_axis[1], z_axis[2], color=z_axis_color, linewidth=2, linestyle='-') # z-axis
+
+    # Define axis labels and title:
+    ax.set_xlabel('Global X-axis')
+    ax.set_ylabel('Global Y-axis')
+    ax.set_zlabel('Global Z-axis')
+    ax.set_title('Original Orientation')
+
+    # Get rid of number on axis:
+    ax.axes.xaxis.set_ticklabels([])
+    ax.axes.yaxis.set_ticklabels([])
+    ax.axes.zaxis.set_ticklabels([])
+
+    # Get rid of colored axes planes
+    # First remove fill
+    ax.xaxis.pane.fill = False
+    ax.yaxis.pane.fill = False
+    ax.zaxis.pane.fill = False
+    # Now set color to white (or whatever is "invisible")
+    ax.xaxis.pane.set_edgecolor('w')
+    ax.yaxis.pane.set_edgecolor('w')
+    ax.zaxis.pane.set_edgecolor('w')
+
+    # Set plot limits based on 'plot_limit' variable:
+    ax.set_xlim3d(-plot_limit, plot_limit)
+    ax.set_ylim3d(-plot_limit, plot_limit)
+    ax.set_zlim3d(-plot_limit, plot_limit)
+
+    if swap_xy:
+        ax.view_init(30, 50) # view
+
+    #=====================Rotation==================
+    # Define rotation matrix based on quaternion values a, b, c, and d:
+    R = rot_mat(a_norm, b_norm, c_norm, d_norm)
+
+    # ================Rotate all points by rotation matrix R===============
+    pt1 = R @ pt1
+    pt2 = R @ pt2
+    pt3 = R @ pt3
+    pt4 = R @ pt4
+    pt5 = R @ pt5
+    pt6 = R @ pt6
+    pt7 = R @ pt7
+    pt8 = R @ pt8
+
+    x_axis = R @ x_axis
+    y_axis = R @ y_axis
+    z_axis = R @ z_axis
+
+    # Redefine faces after rotation:
+    long_side_face1 = [[ pt1, pt5, pt6, pt2 ]]
+    long_side_face2 = [[pt3, pt7,  pt8, pt4]]
+    short_side_face1 = [[pt3, pt2, pt6, pt7]]
+    short_side_face2 = [[pt1, pt5, pt8, pt4]]
+    bottom_face = [[pt1, pt2, pt3, pt4]]
+    top_face = [[pt5, pt6, pt7, pt8]]
+
+    # =============Create Figure 2 of 2: Transformed sensor orientation================
+    ax2 = fig.add_subplot(122, projection='3d')
+
+    # Plot each of the 6 faces of the rectangular prism:
+    ax2.add_collection3d(Poly3DCollection(long_side_face1, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax2.add_collection3d(Poly3DCollection(long_side_face2, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax2.add_collection3d(Poly3DCollection(short_side_face1, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax2.add_collection3d(Poly3DCollection(short_side_face2, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax2.add_collection3d(Poly3DCollection(bottom_face, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax2.add_collection3d(Poly3DCollection(top_face, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+
+    # Draw 3 arrows for each local coordinate axis:
+    ax2.quiver(0, 0, 0, x_axis[0], x_axis[1], x_axis[2], color=x_axis_color, linewidth=2, linestyle='-') # x-axis
+    ax2.quiver(0, 0, 0, y_axis[0], y_axis[1], y_axis[2], color=y_axis_color, linewidth=2, linestyle='-') # y-axis
+    ax2.quiver(0, 0, 0, z_axis[0], z_axis[1], z_axis[2], color=z_axis_color, linewidth=2, linestyle='-') # z-axis
+
+    # Define axis labels and title:
+    ax2.set_xlabel('Global X-axis')
+    ax2.set_ylabel('Global Y-axis')
+    ax2.set_zlabel('Global Z-axis')
+    ax2.set_title('Transformed Orientation')
+
+    # Get rid of number on grids
+    ax2.axes.xaxis.set_ticklabels([])
+    ax2.axes.yaxis.set_ticklabels([])
+    ax2.axes.zaxis.set_ticklabels([])
+
+    # Get rid of colored axes planes
+    # First remove fill
+    ax2.xaxis.pane.fill = False
+    ax2.yaxis.pane.fill = False
+    ax2.zaxis.pane.fill = False
+    # Now set color to white (or whatever is "invisible")
+    ax2.xaxis.pane.set_edgecolor('w')
+    ax2.yaxis.pane.set_edgecolor('w')
+    ax2.zaxis.pane.set_edgecolor('w')
+
+    # Set plot limits based on 'plot_limit' variable:
+    ax2.set_xlim3d(-plot_limit, plot_limit)
+    ax2.set_ylim3d(-plot_limit, plot_limit)
+    ax2.set_zlim3d(-plot_limit, plot_limit)
+
+    if swap_xy:
+        ax2.view_init(30, 50) # view
+        text_position = [10, 2, -4]
+    else:
+        text_position = [0, -10, -4]
+
+    # Text value of the quaternion
+    quat_string = 'q='+ str(round(a, 2)) + '+' + str(round(b, 2)) + 'i+' + str(round(c, 2)) + 'j+' + str(round(d, 2)) + 'k'
+    ax2.text(text_position[0], text_position[1], text_position[2], s=quat_string, fontsize=12, color=text_color, fontfamily='serif', backgroundcolor=text_background ,fontweight='bold')
+    
+    fig.tight_layout(pad=2.0)  # To add padding between subplots.
+    plt.show()                 # To show the plot.
+    fig.savefig('Quaternion_Figure.png', dpi=400, bbox_inches='tight')   # To save the entire figure.
+
+
+def view_orientation(file_path, dark_mode=False, swap_xy=False, num_frame=50, frame_delay=200):
+    """
+    Input:
+        file_path: string containing the file path location (or URL link) of your .csv.
+        dark_mode: Boolean variable for dark mode plotting: 'True' for dark mode plotting; 'False' for white background.
+        swap_xy: Boolean variable for swapping x-axis and y-axis in 3D view of the sensor.
+        num_frame: Integer value representing the number of frames you wish to show. 
+        frame_delay: Integer value representing the delay between frames in milliseconds.
+    Output:
+        The function renders a gif of your sensors orientation for visualization and saves the .gif file.
+    """
+
+    # Import Libraries:
+    import pandas as pd                 # Python library for data manipulation and analysis
+    import matplotlib.pyplot as plt     # Python library for data visualization
+    import numpy as np                  # Numerical Python 
+    from matplotlib import animation    # Matplotlib library for animatin
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection  # Library for 3D rendering.
+    from IPython.display import Image   # For rendering gif on notebook.
+
+    # Call prep_data() to prep and tidy the data:
+    data_a, data_g, data_l, data_m, data_r = prep_data(file_path)
+
+
+    #===========Adjust data_r to have size of 'num_frame'====================
+    # Make a copy of data_r:
+    data_r2 = data_r.copy()
+
+    # ==============Add datetime to data_r2:
+    # Step 1: Enter the data collection date. 
+    deploy_date = '2022-09-08 09:50:00'  # Can be anything
+
+    # Step 2: Convert `deploy_date` to a datetime object:
+    deploy_date = pd.to_datetime(deploy_date)
+
+    # Step 3: Convert `date.elapsed_time` to datetime.  Save it under a new series `new_time`
+    new_time = pd.to_datetime(data_r2.time, unit='s')
+
+    # Step 4: Adjust the date. 
+        # Compute timedelta between `deploy_date` and the first recorded time in `new_time`
+    time_diff = deploy_date-new_time[0]  # This creates a timedelta
+        # Add the `time_diff` to `new_time` to adjust the date.
+    new_time = new_time+time_diff
+
+    # Step 5: Store `new_time` in new variable 'date':
+    data_r2['date'] = new_time
+
+    # ============= Time Resampling
+    # Resample based on 'num_frame'
+    num_index = data_r2.index[-1]
+    dt = round(data_r2.loc[num_index, 'time']/num_frame,2)
+    time_string = str(dt)+'S'
+    data_r2 = data_r2.resample(time_string, on='date').mean()
+
+    # Reset index:
+    data_r2.reset_index(inplace=True)
+
+    #================ Let's fix time
+    # Compute the time delta between datetimes using .diff()
+    t_delta = data_r2.date.diff()
+
+    # Convert time delta into 'seconds'
+    t_delta = t_delta.dt.total_seconds()
+
+    # Fill NaN with zero
+    t_delta = t_delta.fillna(0)
+
+    # Take cumulutive sum and make new variable.
+    data_r2['time'] = t_delta.cumsum()
+
+    #=========================Code to create animation==================
+    # Reset default matplotlib settings:
+    plt.rcdefaults()
+
+    # set global parameters for plotting (optional):
+    plt.rcParams['figure.figsize'] = [10, 4]
+    plt.rcParams.update({'font.size': 11})
+    plt.rcParams["font.family"] = "serif"  # Set font style globally to serif (much nicer than default font style).
+    plot_limit = 8  # constant for x-axis, y-axis, and z-axis length limits
+
+    # Set dark mode style on if dark_mode == True:
+    if dark_mode:  # True if dark_mode == True
+        plt.style.use('dark_background')  # set 'dark_background' sylte on
+        edge_color = 'white'  # set color for legend box to white
+        sensor_color = '#990000' # crimson
+        sensor_alpha = 0.6       # alpha transparency between 0 to 1
+        sensor_edge_color = 'w'  # white
+        x_axis_color = '#ff073a' # neon red
+        y_axis_color = '#04d9ff' # neon blue
+        z_axis_color = '#39FF14' # neon green
+        text_color = 'w'
+        text_background = 'k'
+    else:         # if dark_mode == False 
+        edge_color = 'black'  # set color for legend box to black
+        sensor_color = sensor_color = '#990000' # crimson
+        sensor_alpha = 0.2
+        sensor_edge_color = 'k' # black
+        x_axis_color = 'r' # red
+        y_axis_color = 'b' # blue
+        z_axis_color = 'g' # green
+        text_color = 'k'
+        text_background = 'w'
+
+    # Define sensor dimensions for plotting:
+    width = 4     # y-axis dimension
+    height = 1    # z-axis dimension
+    depth = 6     # x-axis dimension
+
+    # Attaching 3D axis to the figure
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+
+    # Define axis labels and title:
+    ax.set_xlabel('Global X-axis')
+    ax.set_ylabel('Global Y-axis')
+    ax.set_zlabel('Global Z-axis')
+
+    # Get rid of number on grids
+    ax.axes.xaxis.set_ticklabels([])
+    ax.axes.yaxis.set_ticklabels([])
+    ax.axes.zaxis.set_ticklabels([])
+
+    # Get rid of colored axes planes
+    # First remove fill
+    ax.xaxis.pane.fill = False
+    ax.yaxis.pane.fill = False
+    ax.zaxis.pane.fill = False
+    # Now set color to white (or whatever is "invisible")
+    ax.xaxis.pane.set_edgecolor('w')
+    ax.yaxis.pane.set_edgecolor('w')
+    ax.zaxis.pane.set_edgecolor('w')
+
+    # Set plot limits based on 'plot_limit' variable:
+    ax.set_xlim3d(-plot_limit, plot_limit)
+    ax.set_ylim3d(-plot_limit, plot_limit)
+    ax.set_zlim3d(-plot_limit, plot_limit)
+
+    if swap_xy:
+        ax.view_init(30, 50) # view
+
+    # Update plot function for animation:
+    def update(frame):
+        ax.clear()
+
+        # Define 8 points of rectangular prism:
+        pt1 = np.array([-depth/2, -width/2, -height/2 ])
+        pt2 = np.array([depth/2, -width/2, -height/2 ])
+        pt3 = np.array([depth/2, width/2, -height/2 ])
+        pt4 = np.array([-depth/2, width/2, -height/2])
+        pt5 = np.array([-depth/2, -width/2, height/2])
+        pt6 = np.array([depth/2, -width/2, height/2 ])
+        pt7 = np.array([depth/2, width/2, height/2])
+        pt8 = np.array([-depth/2, width/2, height/2])
+
+        # define 6 faces of rectangular prism:
+        long_side_face1 = [[ pt1, pt5, pt6, pt2 ]]
+        long_side_face2 = [[pt3, pt7,  pt8, pt4]]
+        short_side_face1 = [[pt3, pt2, pt6, pt7]]
+        short_side_face2 = [[pt1, pt5, pt8, pt4]]
+        bottom_face = [[pt1, pt2, pt3, pt4]]
+        top_face = [[pt5, pt6, pt7, pt8]]
+
+        # Define vectors representing coordinate axes x, y, and z:
+        arrow_length = depth/2*1.9
+        x_axis = np.array([arrow_length, 0, 0])
+        y_axis = np.array([0, arrow_length, 0 ])
+        z_axis = np.array([ 0, 0, arrow_length ])
+
+        # Define quaternion values for current frame:
+        a = data_r2.loc[frame, 'a']
+        b = data_r2.loc[frame, 'b']
+        c = data_r2.loc[frame, 'c']
+        d = data_r2.loc[frame, 'd']
+
+        # Normalize quaternion (Rotation matrix needs unit quaternion)
+        mag = np.sqrt(a**2 + b**2 + c**2 + d**2)
+        a = a/mag
+        b = b/mag
+        c = c/mag
+        d = d/mag
+
+        # Define rotation matrix based on quaternion values a, b, c, and d:
+        R = rot_mat(a, b, c, d)
+
+        # Rotate all points by rotation matrix R
+        pt1 = R @ pt1
+        pt2 = R @ pt2
+        pt3 = R @ pt3
+        pt4 = R @ pt4
+        pt5 = R @ pt5
+        pt6 = R @ pt6
+        pt7 = R @ pt7
+        pt8 = R @ pt8
+        x_axis = R @ x_axis
+        y_axis = R @ y_axis
+        z_axis = R @ z_axis
+
+        # Redefine faces after rotation:
+        long_side_face1 = [[ pt1, pt5, pt6, pt2 ]]
+        long_side_face2 = [[pt3, pt7,  pt8, pt4]]
+        short_side_face1 = [[pt3, pt2, pt6, pt7]]
+        short_side_face2 = [[pt1, pt5, pt8, pt4]]
+        bottom_face = [[pt1, pt2, pt3, pt4]]
+        top_face = [[pt5, pt6, pt7, pt8]]
+
+        # Plot each of the 6 faces of the rectangular prism:
+        ax.add_collection3d(Poly3DCollection(long_side_face1, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+        ax.add_collection3d(Poly3DCollection(long_side_face2, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+        ax.add_collection3d(Poly3DCollection(short_side_face1, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+        ax.add_collection3d(Poly3DCollection(short_side_face2, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+        ax.add_collection3d(Poly3DCollection(bottom_face, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+        ax.add_collection3d(Poly3DCollection(top_face, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+
+        # Draw 3 arrows for each local coordinate axis:
+        ax.quiver(0, 0, 0, x_axis[0], x_axis[1], x_axis[2], color=x_axis_color, linewidth=2, linestyle='-') # x-axis
+        ax.quiver(0, 0, 0, y_axis[0], y_axis[1], y_axis[2], color=y_axis_color, linewidth=2, linestyle='-') # y-axis
+        ax.quiver(0, 0, 0, z_axis[0], z_axis[1], z_axis[2], color=z_axis_color, linewidth=2, linestyle='-') # z-axis
+
+        # Define axis labels and title:
+        ax.set_xlabel('Global X-axis')
+        ax.set_ylabel('Global Y-axis')
+        ax.set_zlabel('Global Z-axis')
+        ax.set_title('Time = ' + str(np.round(data_r2.loc[frame, 'time'],decimals=2)) + ' sec')
+
+        # Get rid of number on grids
+        ax.axes.xaxis.set_ticklabels([])
+        ax.axes.yaxis.set_ticklabels([])
+        ax.axes.zaxis.set_ticklabels([])
+
+        # Get rid of colored axes planes
+        # First remove fill
+        ax.xaxis.pane.fill = False
+        ax.yaxis.pane.fill = False
+        ax.zaxis.pane.fill = False
+        # Now set color to white (or whatever is "invisible")
+        ax.xaxis.pane.set_edgecolor('w')
+        ax.yaxis.pane.set_edgecolor('w')
+        ax.zaxis.pane.set_edgecolor('w')
+
+        # Set plot limits based on 'plot_limit' variable:
+        ax.set_xlim3d(-plot_limit, plot_limit)
+        ax.set_ylim3d(-plot_limit, plot_limit)
+        ax.set_zlim3d(-plot_limit, plot_limit)
+
+    # Define the Animation
+    ani = animation.FuncAnimation(fig, update, frames=num_frame, interval=frame_delay)
+    plt.close()
+
+    # Saving the Animation
+    file_name = file_path.split('/')[-1][:-4] + '_animation.gif'
+    f = '/content/' + file_name  # This only works in Google Colab!!
+    writergif = animation.PillowWriter(fps=num_frame/8)
+    ani.save(f, writer=writergif)
+
+    # Render gif on Google Colab notebook:
+    return Image(open(file_name,'rb').read())
