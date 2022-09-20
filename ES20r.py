@@ -1,8 +1,9 @@
 """
 This file contains code used in ES20r Sports of Physics,
 by Jason Martinez (jmartinez@seas.harvard.edu).
+https://www.seas.harvard.edu/computing-engineering-education
 
-Last Modified: 09/09/2022
+Last Modified: 09/20/2022
 
 Copyright 2022 Jason Martinez
 License: MIT License (https://opensource.org/licenses/MIT)
@@ -792,3 +793,291 @@ def view_orientation(file_path, dark_mode=False, swap_xy=False, num_frame=50, fr
 
     # Render gif on Google Colab notebook:
     return Image(open(file_name,'rb').read())
+
+def rot_mat_Euler(yaw_z=0, pitch_y=0, roll_x=0, intrinsic=True, sequence='zyx', radians=False):
+    """
+    Input:
+        yaw_z: Float value containing the yaw in [deg] or [rad]; rotation about z-axis  
+        pitch_y: Float value containing the pitch in [deg] or [rad]; rotation about y-axis    
+        roll_x:  Float value containing the roll in [deg] or [rad]; rotation about x-axis
+        intrinsic: Boolean value for intrinsic angles: 'True' for intrinsic angles, 'False' for extrinsic angles 
+        sequence: String containing the Euler angle rotation sequence; e.g. 'xyz', or 'XYZ'
+        radians: Boolean value for whether radians used for yaw, pitch, and roll: 'True' if using radians, 'False' if using degrees.
+    Output:
+        rotMat: 3x3 NumPy array with rotation matrix R.
+    """
+
+    # Import libraries
+    import numpy as np
+
+    # Lowercase the sequence order
+    sequence = sequence.lower()   
+
+    # Ensure sequence is unique (i.e., a Tait-Brian Euler angle) and there are three entries
+    if (sequence.count('x') != 1) or (sequence.count('y') != 1) or (sequence.count('z') != 1): 
+      print('ERROR: The sequence is not correct!')
+      return # End Function
+
+    # Convert sequences from Extrinsic to Intrinsic if 'intrinsic==False'
+    if intrinsic == False:  # Angles are Extrinsic and must be converted to Intrinsic
+        if sequence == 'zyx': sequence = 'xyz'
+        if sequence == 'xzy': sequence = 'yzx'
+        if sequence == 'yxz': sequence = 'zxy'
+        if sequence == 'yzx': sequence = 'xzy'
+        if sequence == 'xyz': sequence = 'zyx'
+        if sequence == 'zxy': sequence = 'yxz'
+
+    # Convert yaw, pitch, and roll to radians if 'radians==False'
+    if radians == False:    # angles input in degrees
+        yaw_z = np.radians(yaw_z)
+        pitch_y = np.radians(pitch_y)
+        roll_x = np.radians(roll_x)
+
+    # Compute cosine and sine angles:
+    cx = np.cos(roll_x)
+    sx = np.sin(roll_x)
+    cy = np.cos(pitch_y)
+    sy = np.sin(pitch_y)
+    cz = np.cos(yaw_z)
+    sz = np.sin(yaw_z)
+
+
+    # Compute Elemental Rotations matrices:
+    Rx = np.array([[1, 0, 0],[0, cx, -sx],[0, sx, cx]])
+    Ry = np.array([[cy, 0, sy],[0, 1, 0], [-sy, 0, cy]])
+    Rz = np.array([[cz, -sz, 0],[sz, cz, 0], [0, 0, 1]])
+    
+    # Compute final Rotation matrix (sequence dependent)
+    if sequence == 'zyx': R = Rz @ Ry @ Rx
+    if sequence == 'xzy': R = Rx @ Rz @ Ry  
+    if sequence == 'yxz': R = Ry @ Rx @ Rz
+    if sequence == 'yzx': R = Ry @ Rz @ Rx
+    if sequence == 'xyz': R = Rx @ Ry @ Rz
+    if sequence == 'zxy': R = Rz @ Rx @ Ry
+    
+    return R
+
+def view_Euler(yaw_z=0, pitch_y=0, roll_x=0, intrinsic=True, sequence='zyx', radians=False, dark_mode=False, swap_xy=False):
+    """
+    Input:
+        yaw_z: Float value containing the yaw in [deg] or [rad]; rotation about z-axis  
+        pitch_y: Float value containing the pitch in [deg] or [rad]; rotation about y-axis    
+        roll_x:  Float value containing the roll in [deg] or [rad]; rotation about x-axis
+        intrinsic: Boolean value for intrinsic angles: 'True' for intrinsic angles, 'False' for extrinsic angles 
+        sequence: String containing the Euler angle rotation sequence; e.g. 'xyz', or 'XYZ'
+        radians: Boolean value for whether radians used for yaw, pitch, and roll: 'True' if using radians, 'False' if using degrees.
+        dark_mode: Boolean variable for dark mode plotting: 'True' for dark mode plotting; 'False' for white background
+        swap_xy: Boolean variable for swapping x-axis and y-axis in 3D view of the sensor
+    Output:
+        The function renders the figure of your quaternion and saves the image as a .png file.
+    """
+    # Import Modules:
+    import numpy as np
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
+    import matplotlib.pyplot as plt
+
+    # Lowercase the sequence order
+    sequence = sequence.lower()   
+
+    # Ensure sequence is unique (i.e., a Tait-Brian Euler angle) and there are three entries
+    if (sequence.count('x') != 1) or (sequence.count('y') != 1) or (sequence.count('z') != 1): 
+      print('ERROR: The sequence must be distinct!')
+      return # End Function
+
+    # Reset default matplotlib settings:
+    plt.rcdefaults()
+
+    # set global parameters for plotting (optional):
+    plt.rcParams['figure.figsize'] = [14, 6]
+    plt.rcParams.update({'font.size': 14})
+    plt.rcParams["font.family"] = "serif"  # Set font style globally to serif (much nicer than default font style).
+    plot_limit = 8  # constant for x-axis, y-axis, and z-axis length limits
+
+    # Set dark mode style on if dark_mode == True:
+    if dark_mode:  # True if dark_mode == True
+      plt.style.use('dark_background')  # set 'dark_background' sylte on
+      edge_color = 'white'  # set color for legend box to white
+      sensor_color = '#990000' # crimson
+      sensor_alpha = 0.6       # alpha transparency between 0 to 1
+      sensor_edge_color = 'w'  # white
+      x_axis_color = '#ff073a' # neon red
+      y_axis_color = '#04d9ff' # neon blue
+      z_axis_color = '#39FF14' # neon green
+      text_color = 'w'
+      text_background = 'k'
+    else:         # if dark_mode == False 
+      edge_color = 'black'  # set color for legend box to black
+      sensor_color = sensor_color = '#990000' # crimson
+      sensor_alpha = 0.2
+      sensor_edge_color = 'k' # black
+      x_axis_color = 'r' # red
+      y_axis_color = 'b' # blue
+      z_axis_color = 'g' # green
+      text_color = 'k'
+      text_background = 'w'
+
+    # Define sensor dimensions for plotting:
+    width = 4     # y-axis dimension
+    height = 1    # z-axis dimension
+    depth = 6     # x-axis dimension
+
+    # Define 8 points of rectangular prism:
+    pt1 = np.array([-depth/2, -width/2, -height/2 ])
+    pt2 = np.array([depth/2, -width/2, -height/2 ])
+    pt3 = np.array([depth/2, width/2, -height/2 ])
+    pt4 = np.array([-depth/2, width/2, -height/2])
+    pt5 = np.array([-depth/2, -width/2, height/2])
+    pt6 = np.array([depth/2, -width/2, height/2 ])
+    pt7 = np.array([depth/2, width/2, height/2])
+    pt8 = np.array([-depth/2, width/2, height/2])
+
+    # define 6 faces of rectangular prism:
+    long_side_face1 = [[ pt1, pt5, pt6, pt2 ]]
+    long_side_face2 = [[pt3, pt7,  pt8, pt4]]
+    short_side_face1 = [[pt3, pt2, pt6, pt7]]
+    short_side_face2 = [[pt1, pt5, pt8, pt4]]
+    bottom_face = [[pt1, pt2, pt3, pt4]]
+    top_face = [[pt5, pt6, pt7, pt8]]
+
+    # Define vectors representing coordinate axes x, y, and z:
+    arrow_length = depth/2*1.9
+    x_axis = np.array([arrow_length, 0, 0])
+    y_axis = np.array([0, arrow_length, 0 ])
+    z_axis = np.array([ 0, 0, arrow_length ])
+
+    # =============Create Figure 1 of 2: Original sensor orientation================
+    fig = plt.figure()
+    ax = fig.add_subplot(121, projection='3d')
+
+    # Plot each of the 6 faces of the rectangular prism:
+    ax.add_collection3d(Poly3DCollection(long_side_face1, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax.add_collection3d(Poly3DCollection(long_side_face2, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax.add_collection3d(Poly3DCollection(short_side_face1, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax.add_collection3d(Poly3DCollection(short_side_face2, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax.add_collection3d(Poly3DCollection(bottom_face, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax.add_collection3d(Poly3DCollection(top_face, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+
+    # Draw 3 arrows for each local coordinate axis:
+    ax.quiver(0, 0, 0, x_axis[0], x_axis[1], x_axis[2], color=x_axis_color, linewidth=2, linestyle='-') # x-axis
+    ax.quiver(0, 0, 0, y_axis[0], y_axis[1], y_axis[2], color=y_axis_color, linewidth=2, linestyle='-') # y-axis
+    ax.quiver(0, 0, 0, z_axis[0], z_axis[1], z_axis[2], color=z_axis_color, linewidth=2, linestyle='-') # z-axis
+
+    # Define axis labels and title:
+    ax.set_xlabel('Global X-axis')
+    ax.set_ylabel('Global Y-axis')
+    ax.set_zlabel('Global Z-axis')
+    ax.set_title('Original Orientation')
+
+    # Get rid of number on axis:
+    ax.axes.xaxis.set_ticklabels([])
+    ax.axes.yaxis.set_ticklabels([])
+    ax.axes.zaxis.set_ticklabels([])
+
+    # Get rid of colored axes planes
+    # First remove fill
+    ax.xaxis.pane.fill = False
+    ax.yaxis.pane.fill = False
+    ax.zaxis.pane.fill = False
+    # Now set color to white (or whatever is "invisible")
+    ax.xaxis.pane.set_edgecolor('w')
+    ax.yaxis.pane.set_edgecolor('w')
+    ax.zaxis.pane.set_edgecolor('w')
+
+    # Set plot limits based on 'plot_limit' variable:
+    ax.set_xlim3d(-plot_limit, plot_limit)
+    ax.set_ylim3d(-plot_limit, plot_limit)
+    ax.set_zlim3d(-plot_limit, plot_limit)
+
+    if swap_xy:
+        ax.view_init(30, 50) # view
+
+    #=====================Rotation==================
+    # Define rotation matrix based on yaw, pitch, and yaw:
+    R = rot_mat_Euler(yaw_z, pitch_y, roll_x, intrinsic, sequence, radians)
+
+    # ================Rotate all points by rotation matrix R===============
+    pt1 = R @ pt1
+    pt2 = R @ pt2
+    pt3 = R @ pt3
+    pt4 = R @ pt4
+    pt5 = R @ pt5
+    pt6 = R @ pt6
+    pt7 = R @ pt7
+    pt8 = R @ pt8
+
+    x_axis = R @ x_axis
+    y_axis = R @ y_axis
+    z_axis = R @ z_axis
+
+    # Redefine faces after rotation:
+    long_side_face1 = [[ pt1, pt5, pt6, pt2 ]]
+    long_side_face2 = [[pt3, pt7,  pt8, pt4]]
+    short_side_face1 = [[pt3, pt2, pt6, pt7]]
+    short_side_face2 = [[pt1, pt5, pt8, pt4]]
+    bottom_face = [[pt1, pt2, pt3, pt4]]
+    top_face = [[pt5, pt6, pt7, pt8]]
+
+    # =============Create Figure 2 of 2: Transformed sensor orientation================
+    ax2 = fig.add_subplot(122, projection='3d')
+
+    # Plot each of the 6 faces of the rectangular prism:
+    ax2.add_collection3d(Poly3DCollection(long_side_face1, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax2.add_collection3d(Poly3DCollection(long_side_face2, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax2.add_collection3d(Poly3DCollection(short_side_face1, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax2.add_collection3d(Poly3DCollection(short_side_face2, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax2.add_collection3d(Poly3DCollection(bottom_face, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+    ax2.add_collection3d(Poly3DCollection(top_face, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+
+    # Draw 3 arrows for each local coordinate axis:
+    ax2.quiver(0, 0, 0, x_axis[0], x_axis[1], x_axis[2], color=x_axis_color, linewidth=2, linestyle='-') # x-axis
+    ax2.quiver(0, 0, 0, y_axis[0], y_axis[1], y_axis[2], color=y_axis_color, linewidth=2, linestyle='-') # y-axis
+    ax2.quiver(0, 0, 0, z_axis[0], z_axis[1], z_axis[2], color=z_axis_color, linewidth=2, linestyle='-') # z-axis
+
+    # Define axis labels and title:
+    ax2.set_xlabel('Global X-axis')
+    ax2.set_ylabel('Global Y-axis')
+    ax2.set_zlabel('Global Z-axis')
+    ax2.set_title('Transformed Orientation')
+
+    # Get rid of number on grids
+    ax2.axes.xaxis.set_ticklabels([])
+    ax2.axes.yaxis.set_ticklabels([])
+    ax2.axes.zaxis.set_ticklabels([])
+
+    # Get rid of colored axes planes
+    # First remove fill
+    ax2.xaxis.pane.fill = False
+    ax2.yaxis.pane.fill = False
+    ax2.zaxis.pane.fill = False
+    # Now set color to white (or whatever is "invisible")
+    ax2.xaxis.pane.set_edgecolor('w')
+    ax2.yaxis.pane.set_edgecolor('w')
+    ax2.zaxis.pane.set_edgecolor('w')
+
+    # Set plot limits based on 'plot_limit' variable:
+    ax2.set_xlim3d(-plot_limit, plot_limit)
+    ax2.set_ylim3d(-plot_limit, plot_limit)
+    ax2.set_zlim3d(-plot_limit, plot_limit)
+
+    if swap_xy:
+        ax2.view_init(30, 50) # view
+        text_position = [9, 5, -6]
+    else:
+        text_position = [3, -10, -6]
+
+    # Text value of the Euler angles:
+    if intrinsic == True:
+      intrinsic_str = 'Intrinsic sequence'
+    else:
+      intrinsic_str = 'Extrinsic sequence'
+    if radians == False:
+      Euler_angle_string = intrinsic_str + ' = ' + sequence + ',\n yaw_z = ' + str(round(yaw_z, 2)) + ' deg.,\n pitch_y = ' + str(round(pitch_y, 2)) + ' deg.,\n roll_x = ' + str(round(roll_x, 2)) + ' deg.'
+    else:
+      Euler_angle_string = intrinsic_str + ' = ' + sequence + ',\n yaw_z = ' + str(round(yaw_z, 2)) + ' rad.,\n pitch_y = ' + str(round(pitch_y, 2)) + ' rad.,\n roll_x = ' + str(round(roll_x, 2)) + ' rad.'
+    ax2.text(text_position[0], text_position[1], text_position[2], s=Euler_angle_string, fontsize=10, color=text_color, fontfamily='serif', backgroundcolor=text_background)
+    
+
+    fig.tight_layout(pad=2.0)  # To add padding between subplots.
+    plt.show()                 # To show the plot.
+    fig.savefig('Euler_angle_Figure.png', dpi=400, bbox_inches='tight')   # To save the entire figure.
+
