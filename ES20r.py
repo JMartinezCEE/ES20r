@@ -3,10 +3,7 @@ This file contains code used in ES20r Sports of Physics,
 by Jason Martinez (jmartinez@seas.harvard.edu).
 https://www.seas.harvard.edu/computing-engineering-education
 
-Last Modified: 09/20/2022
-
-Copyright 2022 Jason Martinez
-License: MIT License (https://opensource.org/licenses/MIT)
+Last Modified: 09/22/2022
 """
 
 # Import Libraries:
@@ -537,263 +534,6 @@ def view_quat(a=1, b=0, c=0, d=0, dark_mode=False, swap_xy=False):
     fig.savefig('Quaternion_Figure.png', dpi=400, bbox_inches='tight')   # To save the entire figure.
 
 
-def view_orientation(file_path, dark_mode=False, swap_xy=False, num_frame=50, frame_delay=200):
-    """
-    Input:
-        file_path: string containing the file path location (or URL link) of your .csv.
-        dark_mode: Boolean variable for dark mode plotting: 'True' for dark mode plotting; 'False' for white background.
-        swap_xy: Boolean variable for swapping x-axis and y-axis in 3D view of the sensor.
-        num_frame: Integer value representing the number of frames you wish to show. 
-        frame_delay: Integer value representing the delay between frames in milliseconds.
-    Output:
-        The function renders a gif of your sensors orientation for visualization and saves the .gif file.
-    """
-
-    # Import Libraries:
-    import pandas as pd                 # Python library for data manipulation and analysis
-    import matplotlib.pyplot as plt     # Python library for data visualization
-    import numpy as np                  # Numerical Python 
-    from matplotlib import animation    # Matplotlib library for animatin
-    from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection  # Library for 3D rendering.
-    from IPython.display import Image   # For rendering gif on notebook.
-
-    # Call prep_data() to prep and tidy the data:
-    data_a, data_g, data_l, data_m, data_r = prep_data(file_path)
-
-
-    #===========Adjust data_r to have size of 'num_frame'====================
-    # Make a copy of data_r:
-    data_r2 = data_r.copy()
-
-    # ==============Add datetime to data_r2:
-    # Step 1: Enter the data collection date. 
-    deploy_date = '2022-09-08 09:50:00'  # Can be anything
-
-    # Step 2: Convert `deploy_date` to a datetime object:
-    deploy_date = pd.to_datetime(deploy_date)
-
-    # Step 3: Convert `date.elapsed_time` to datetime.  Save it under a new series `new_time`
-    new_time = pd.to_datetime(data_r2.time, unit='s')
-
-    # Step 4: Adjust the date. 
-        # Compute timedelta between `deploy_date` and the first recorded time in `new_time`
-    time_diff = deploy_date-new_time[0]  # This creates a timedelta
-        # Add the `time_diff` to `new_time` to adjust the date.
-    new_time = new_time+time_diff
-
-    # Step 5: Store `new_time` in new variable 'date':
-    data_r2['date'] = new_time
-
-    # ============= Time Resampling
-    # Resample based on 'num_frame'
-    num_index = data_r2.index[-1]
-    dt = round(data_r2.loc[num_index, 'time']/num_frame,2)
-    time_string = str(dt)+'S'
-    data_r2 = data_r2.resample(time_string, on='date').mean()
-
-    # Reset index:
-    data_r2.reset_index(inplace=True)
-
-    #================ Let's fix time
-    # Compute the time delta between datetimes using .diff()
-    t_delta = data_r2.date.diff()
-
-    # Convert time delta into 'seconds'
-    t_delta = t_delta.dt.total_seconds()
-
-    # Fill NaN with zero
-    t_delta = t_delta.fillna(0)
-
-    # Take cumulutive sum and make new variable.
-    data_r2['time'] = t_delta.cumsum()
-
-    #=========================Code to create animation==================
-    # Reset default matplotlib settings:
-    plt.rcdefaults()
-
-    # set global parameters for plotting (optional):
-    plt.rcParams['figure.figsize'] = [10, 4]
-    plt.rcParams.update({'font.size': 11})
-    plt.rcParams["font.family"] = "serif"  # Set font style globally to serif (much nicer than default font style).
-    plot_limit = 8  # constant for x-axis, y-axis, and z-axis length limits
-
-    # Set dark mode style on if dark_mode == True:
-    if dark_mode:  # True if dark_mode == True
-        plt.style.use('dark_background')  # set 'dark_background' sylte on
-        edge_color = 'white'  # set color for legend box to white
-        sensor_color = '#990000' # crimson
-        sensor_alpha = 0.6       # alpha transparency between 0 to 1
-        sensor_edge_color = 'w'  # white
-        x_axis_color = '#ff073a' # neon red
-        y_axis_color = '#04d9ff' # neon blue
-        z_axis_color = '#39FF14' # neon green
-        text_color = 'w'
-        text_background = 'k'
-    else:         # if dark_mode == False 
-        edge_color = 'black'  # set color for legend box to black
-        sensor_color = sensor_color = '#990000' # crimson
-        sensor_alpha = 0.2
-        sensor_edge_color = 'k' # black
-        x_axis_color = 'r' # red
-        y_axis_color = 'b' # blue
-        z_axis_color = 'g' # green
-        text_color = 'k'
-        text_background = 'w'
-
-    # Define sensor dimensions for plotting:
-    width = 4     # y-axis dimension
-    height = 1    # z-axis dimension
-    depth = 6     # x-axis dimension
-
-    # Attaching 3D axis to the figure
-    fig = plt.figure()
-    ax = fig.add_subplot(projection="3d")
-
-    # Define axis labels and title:
-    ax.set_xlabel('Global X-axis')
-    ax.set_ylabel('Global Y-axis')
-    ax.set_zlabel('Global Z-axis')
-
-    # Get rid of number on grids
-    ax.axes.xaxis.set_ticklabels([])
-    ax.axes.yaxis.set_ticklabels([])
-    ax.axes.zaxis.set_ticklabels([])
-
-    # Get rid of colored axes planes
-    # First remove fill
-    ax.xaxis.pane.fill = False
-    ax.yaxis.pane.fill = False
-    ax.zaxis.pane.fill = False
-    # Now set color to white (or whatever is "invisible")
-    ax.xaxis.pane.set_edgecolor('w')
-    ax.yaxis.pane.set_edgecolor('w')
-    ax.zaxis.pane.set_edgecolor('w')
-
-    # Set plot limits based on 'plot_limit' variable:
-    ax.set_xlim3d(-plot_limit, plot_limit)
-    ax.set_ylim3d(-plot_limit, plot_limit)
-    ax.set_zlim3d(-plot_limit, plot_limit)
-
-    if swap_xy:
-        ax.view_init(30, 50) # view
-
-    # Update plot function for animation:
-    def update(frame):
-        ax.clear()
-
-        # Define 8 points of rectangular prism:
-        pt1 = np.array([-depth/2, -width/2, -height/2 ])
-        pt2 = np.array([depth/2, -width/2, -height/2 ])
-        pt3 = np.array([depth/2, width/2, -height/2 ])
-        pt4 = np.array([-depth/2, width/2, -height/2])
-        pt5 = np.array([-depth/2, -width/2, height/2])
-        pt6 = np.array([depth/2, -width/2, height/2 ])
-        pt7 = np.array([depth/2, width/2, height/2])
-        pt8 = np.array([-depth/2, width/2, height/2])
-
-        # define 6 faces of rectangular prism:
-        long_side_face1 = [[ pt1, pt5, pt6, pt2 ]]
-        long_side_face2 = [[pt3, pt7,  pt8, pt4]]
-        short_side_face1 = [[pt3, pt2, pt6, pt7]]
-        short_side_face2 = [[pt1, pt5, pt8, pt4]]
-        bottom_face = [[pt1, pt2, pt3, pt4]]
-        top_face = [[pt5, pt6, pt7, pt8]]
-
-        # Define vectors representing coordinate axes x, y, and z:
-        arrow_length = depth/2*1.9
-        x_axis = np.array([arrow_length, 0, 0])
-        y_axis = np.array([0, arrow_length, 0 ])
-        z_axis = np.array([ 0, 0, arrow_length ])
-
-        # Define quaternion values for current frame:
-        a = data_r2.loc[frame, 'a']
-        b = data_r2.loc[frame, 'b']
-        c = data_r2.loc[frame, 'c']
-        d = data_r2.loc[frame, 'd']
-
-        # Normalize quaternion (Rotation matrix needs unit quaternion)
-        mag = np.sqrt(a**2 + b**2 + c**2 + d**2)
-        a = a/mag
-        b = b/mag
-        c = c/mag
-        d = d/mag
-
-        # Define rotation matrix based on quaternion values a, b, c, and d:
-        R = rot_mat(a, b, c, d)
-
-        # Rotate all points by rotation matrix R
-        pt1 = R @ pt1
-        pt2 = R @ pt2
-        pt3 = R @ pt3
-        pt4 = R @ pt4
-        pt5 = R @ pt5
-        pt6 = R @ pt6
-        pt7 = R @ pt7
-        pt8 = R @ pt8
-        x_axis = R @ x_axis
-        y_axis = R @ y_axis
-        z_axis = R @ z_axis
-
-        # Redefine faces after rotation:
-        long_side_face1 = [[ pt1, pt5, pt6, pt2 ]]
-        long_side_face2 = [[pt3, pt7,  pt8, pt4]]
-        short_side_face1 = [[pt3, pt2, pt6, pt7]]
-        short_side_face2 = [[pt1, pt5, pt8, pt4]]
-        bottom_face = [[pt1, pt2, pt3, pt4]]
-        top_face = [[pt5, pt6, pt7, pt8]]
-
-        # Plot each of the 6 faces of the rectangular prism:
-        ax.add_collection3d(Poly3DCollection(long_side_face1, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
-        ax.add_collection3d(Poly3DCollection(long_side_face2, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
-        ax.add_collection3d(Poly3DCollection(short_side_face1, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
-        ax.add_collection3d(Poly3DCollection(short_side_face2, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
-        ax.add_collection3d(Poly3DCollection(bottom_face, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
-        ax.add_collection3d(Poly3DCollection(top_face, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
-
-        # Draw 3 arrows for each local coordinate axis:
-        ax.quiver(0, 0, 0, x_axis[0], x_axis[1], x_axis[2], color=x_axis_color, linewidth=2, linestyle='-') # x-axis
-        ax.quiver(0, 0, 0, y_axis[0], y_axis[1], y_axis[2], color=y_axis_color, linewidth=2, linestyle='-') # y-axis
-        ax.quiver(0, 0, 0, z_axis[0], z_axis[1], z_axis[2], color=z_axis_color, linewidth=2, linestyle='-') # z-axis
-
-        # Define axis labels and title:
-        ax.set_xlabel('Global X-axis')
-        ax.set_ylabel('Global Y-axis')
-        ax.set_zlabel('Global Z-axis')
-        ax.set_title('Time = ' + str(np.round(data_r2.loc[frame, 'time'],decimals=2)) + ' sec')
-
-        # Get rid of number on grids
-        ax.axes.xaxis.set_ticklabels([])
-        ax.axes.yaxis.set_ticklabels([])
-        ax.axes.zaxis.set_ticklabels([])
-
-        # Get rid of colored axes planes
-        # First remove fill
-        ax.xaxis.pane.fill = False
-        ax.yaxis.pane.fill = False
-        ax.zaxis.pane.fill = False
-        # Now set color to white (or whatever is "invisible")
-        ax.xaxis.pane.set_edgecolor('w')
-        ax.yaxis.pane.set_edgecolor('w')
-        ax.zaxis.pane.set_edgecolor('w')
-
-        # Set plot limits based on 'plot_limit' variable:
-        ax.set_xlim3d(-plot_limit, plot_limit)
-        ax.set_ylim3d(-plot_limit, plot_limit)
-        ax.set_zlim3d(-plot_limit, plot_limit)
-
-    # Define the Animation
-    ani = animation.FuncAnimation(fig, update, frames=num_frame, interval=frame_delay)
-    plt.close()
-
-    # Saving the Animation
-    file_name = file_path.split('/')[-1][:-4] + '_animation.gif'
-    f = '/content/' + file_name  # This only works in Google Colab!!
-    writergif = animation.PillowWriter(fps=num_frame/8)
-    ani.save(f, writer=writergif)
-
-    # Render gif on Google Colab notebook:
-    return Image(open(file_name,'rb').read())
-
 def rot_mat_Euler(yaw_z=0, pitch_y=0, roll_x=0, intrinsic=True, sequence='zyx', radians=False):
     """
     Input:
@@ -1081,3 +821,369 @@ def view_Euler(yaw_z=0, pitch_y=0, roll_x=0, intrinsic=True, sequence='zyx', rad
     plt.show()                 # To show the plot.
     fig.savefig('Euler_angle_Figure.png', dpi=400, bbox_inches='tight')   # To save the entire figure.
 
+def view_orientation(file_path, dark_mode=False, view_Euler=False, view_quat=False, swap_xy=False, num_frame=50, frame_delay=200):
+    """
+    Input:
+        file_path: string containing the file path location (or URL link) of your .csv.
+        dark_mode: Boolean variable for dark mode plotting: 'True' for dark mode plotting; 'False' for white background.
+        view_Euler: Boolean variable for showing plot of Euler angles animate alongside the orientation animation
+        view_quat: Boolean variable for showing plot of quaternions animate alongside the orientation animation 
+        swap_xy: Boolean variable for swapping x-axis and y-axis in 3D view of the sensor.
+        num_frame: Integer value representing the number of frames you wish to show. 
+        frame_delay: Integer value representing the delay between frames in milliseconds.
+    Output:
+        The function renders a gif of your sensors orientation for visualization and saves the .gif file.
+    """
+
+    # Import Libraries:
+    import pandas as pd                 # Python library for data manipulation and analysis
+    import matplotlib.pyplot as plt     # Python library for data visualization
+    import numpy as np                  # Numerical Python 
+    from matplotlib import animation    # Matplotlib library for animatin
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection  # Library for 3D rendering.
+    from IPython.display import Image   # For rendering gif on notebook.
+
+    # Call prep_data() to prep and tidy the data:
+    data_a, data_g, data_l, data_m, data_r = prep_data(file_path)
+
+
+    #===========Adjust data_r to have size of 'num_frame'====================
+    # Make a copy of data_r:
+    data_r2 = data_r.copy()
+
+    # ==============Add datetime to data_r2:
+    # Step 1: Enter the data collection date. 
+    deploy_date = '2022-09-08 09:50:00'  # Can be anything
+
+    # Step 2: Convert `deploy_date` to a datetime object:
+    deploy_date = pd.to_datetime(deploy_date)
+
+    # Step 3: Convert `date.elapsed_time` to datetime.  Save it under a new series `new_time`
+    new_time = pd.to_datetime(data_r2.time, unit='s')
+
+    # Step 4: Adjust the date. 
+        # Compute timedelta between `deploy_date` and the first recorded time in `new_time`
+    time_diff = deploy_date-new_time[0]  # This creates a timedelta
+        # Add the `time_diff` to `new_time` to adjust the date.
+    new_time = new_time+time_diff
+
+    # Step 5: Store `new_time` in new variable 'date':
+    data_r2['date'] = new_time
+
+    # ============= Time Resampling
+    # Resample based on 'num_frame'
+    num_index = data_r2.index[-1]
+    dt = round(data_r2.loc[num_index, 'time']/num_frame,2)
+    time_string = str(dt)+'S'
+    data_r2 = data_r2.resample(time_string, on='date').mean()
+
+    # Reset index:
+    data_r2.reset_index(inplace=True)
+
+    #================ Let's fix time
+    # Compute the time delta between datetimes using .diff()
+    t_delta = data_r2.date.diff()
+
+    # Convert time delta into 'seconds'
+    t_delta = t_delta.dt.total_seconds()
+
+    # Fill NaN with zero
+    t_delta = t_delta.fillna(0)
+
+    # Take cumulutive sum and make new variable.
+    data_r2['time'] = t_delta.cumsum()
+
+    #=========================Code to create animation==================
+    # Reset default matplotlib settings:
+    plt.rcdefaults()
+
+    # set global parameters for plotting (optional):
+    #plt.rcParams['figure.figsize'] = [10, 4]
+    plt.rcParams.update({'font.size': 11})
+    plt.rcParams["font.family"] = "serif"  # Set font style globally to serif (much nicer than default font style).
+    plot_limit = 8  # constant for x-axis, y-axis, and z-axis length limits
+
+    # Set dark mode style on if dark_mode == True:
+    if dark_mode:  # True if dark_mode == True
+        plt.style.use('dark_background')  # set 'dark_background' sylte on
+        edge_color = 'white'  # set color for legend box to white
+        sensor_color = '#990000' # crimson
+        sensor_alpha = 0.6       # alpha transparency between 0 to 1
+        sensor_edge_color = 'w'  # white
+        mag_north_color = 'w'    # white for magnetic north arrow
+        x_axis_color = '#ff073a' # neon red
+        y_axis_color = '#04d9ff' # neon blue
+        z_axis_color = '#39FF14' # neon green
+        text_color = 'w'
+        text_background = 'k'
+    else:         # if dark_mode == False 
+        edge_color = 'black'  # set color for legend box to black
+        sensor_color = sensor_color = '#990000' # crimson
+        sensor_alpha = 0.2
+        sensor_edge_color = 'k' # black
+        mag_north_color = 'k'    # white for magnetic north arrow
+        x_axis_color = 'r' # red
+        y_axis_color = 'b' # blue
+        z_axis_color = 'g' # green
+        text_color = 'k'
+        text_background = 'w'
+
+    # Define sensor dimensions for plotting:
+    width = 4     # y-axis dimension
+    height = 1    # z-axis dimension
+    depth = 6     # x-axis dimension
+
+
+     # Determine number of rows and columns of plots, based on the sensor configuration:
+    if not(view_quat) and not(view_Euler):  # Both view_quat and view_Euler are false, only one figure 
+        num_rows = 1
+        num_cols = 1
+        fig_size = (8, 4) # Figure size in inches (default units)
+    elif (view_quat and not(view_Euler)) or (view_Euler and not(view_quat)):  # Two figures
+        num_rows = 2
+        num_cols = 1
+        fig_size=(8,6) # Figure size in inches (default units)
+    elif (view_quat and view_Euler):  # Three Figures
+        num_rows = 3
+        num_cols = 1
+        fig_size=(8,12) # Figure size in inches (default units)
+
+    # Set size globally:
+    plt.rcParams['figure.figsize'] = fig_size
+
+   
+    # Attaching 3D axis to the figure
+    fig = plt.figure()
+    ax = fig.add_subplot(num_rows, num_cols, 1, projection="3d")  # First Plot is always the orientation animation
+    if swap_xy:
+        ax.view_init(30, 50) # view
+
+    if num_rows == 2:
+        ax2 = fig.add_subplot(num_rows, num_cols, 2)   # Add second figure
+    elif num_rows == 3:
+        ax2 = fig.add_subplot(num_rows, num_cols, 2)   # Add second figure
+        ax3 = fig.add_subplot(num_rows, num_cols, 3)   # Add third figure
+
+    #fig.tight_layout(pad=2.0)  # To add padding between subplots.
+
+
+    # Update plot function for animation:
+    def update(frame):
+        ax.clear()
+
+        # Define 8 points of rectangular prism:
+        pt1 = np.array([-depth/2, -width/2, -height/2 ])
+        pt2 = np.array([depth/2, -width/2, -height/2 ])
+        pt3 = np.array([depth/2, width/2, -height/2 ])
+        pt4 = np.array([-depth/2, width/2, -height/2])
+        pt5 = np.array([-depth/2, -width/2, height/2])
+        pt6 = np.array([depth/2, -width/2, height/2 ])
+        pt7 = np.array([depth/2, width/2, height/2])
+        pt8 = np.array([-depth/2, width/2, height/2])
+
+        # define 6 faces of rectangular prism:
+        long_side_face1 = [[ pt1, pt5, pt6, pt2 ]]
+        long_side_face2 = [[pt3, pt7,  pt8, pt4]]
+        short_side_face1 = [[pt3, pt2, pt6, pt7]]
+        short_side_face2 = [[pt1, pt5, pt8, pt4]]
+        bottom_face = [[pt1, pt2, pt3, pt4]]
+        top_face = [[pt5, pt6, pt7, pt8]]
+
+        # Define vectors representing coordinate axes x, y, and z:
+        arrow_length = depth/2*1.9
+        x_axis = np.array([arrow_length, 0, 0])
+        y_axis = np.array([0, arrow_length, 0 ])
+        z_axis = np.array([ 0, 0, arrow_length ])
+
+        # Define quaternion values for current frame:
+        a = data_r2.loc[frame, 'a']
+        b = data_r2.loc[frame, 'b']
+        c = data_r2.loc[frame, 'c']
+        d = data_r2.loc[frame, 'd']
+
+        # Normalize quaternion (Rotation matrix needs unit quaternion)
+        mag = np.sqrt(a**2 + b**2 + c**2 + d**2)
+        a = a/mag
+        b = b/mag
+        c = c/mag
+        d = d/mag
+
+        # Define rotation matrix based on quaternion values a, b, c, and d:
+        R = rot_mat(a, b, c, d)
+
+        # Rotate all points by rotation matrix R
+        pt1 = R @ pt1
+        pt2 = R @ pt2
+        pt3 = R @ pt3
+        pt4 = R @ pt4
+        pt5 = R @ pt5
+        pt6 = R @ pt6
+        pt7 = R @ pt7
+        pt8 = R @ pt8
+        x_axis = R @ x_axis
+        y_axis = R @ y_axis
+        z_axis = R @ z_axis
+
+        # Redefine faces after rotation:
+        long_side_face1 = [[ pt1, pt5, pt6, pt2 ]]
+        long_side_face2 = [[pt3, pt7,  pt8, pt4]]
+        short_side_face1 = [[pt3, pt2, pt6, pt7]]
+        short_side_face2 = [[pt1, pt5, pt8, pt4]]
+        bottom_face = [[pt1, pt2, pt3, pt4]]
+        top_face = [[pt5, pt6, pt7, pt8]]
+
+        # Plot each of the 6 faces of the rectangular prism:
+        ax.add_collection3d(Poly3DCollection(long_side_face1, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+        ax.add_collection3d(Poly3DCollection(long_side_face2, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+        ax.add_collection3d(Poly3DCollection(short_side_face1, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+        ax.add_collection3d(Poly3DCollection(short_side_face2, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+        ax.add_collection3d(Poly3DCollection(bottom_face, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+        ax.add_collection3d(Poly3DCollection(top_face, facecolors=sensor_color, linewidths=1., edgecolors=sensor_edge_color, alpha=sensor_alpha))
+
+        # Draw 3 arrows for each local coordinate axis:
+        ax.quiver(0, 0, 0, x_axis[0], x_axis[1], x_axis[2], color=x_axis_color, linewidth=2, linestyle='-') # x-axis
+        ax.quiver(0, 0, 0, y_axis[0], y_axis[1], y_axis[2], color=y_axis_color, linewidth=2, linestyle='-') # y-axis
+        ax.quiver(0, 0, 0, z_axis[0], z_axis[1], z_axis[2], color=z_axis_color, linewidth=2, linestyle='-') # z-axis
+
+        # Magnetic north and gravity
+        if swap_xy:
+            start_pt = [6, -6, -6]
+            text_position = [6, -5.5 + arrow_length, -6.5]
+        else:
+            start_pt = [6, -6, -6]
+            text_position = [6.5, -6.5 + arrow_length, -6.5]
+
+        # Magnetic north arrow:
+        ax.quiver(start_pt[0], start_pt[1], start_pt[2],  0 ,arrow_length, 0, color=mag_north_color, linewidth=1.6, linestyle='-') # z-axis
+
+        # Text for 'N' near the magnetic north arrow:
+        ax.text(text_position[0], text_position[1], text_position[2], s='N', fontsize=14, color=text_color, fontfamily='serif' , fontweight='bold')
+
+
+        # Define axis labels and title:
+        ax.set_xlabel('Global X-axis')
+        ax.set_ylabel('Global Y-axis')
+        ax.set_zlabel('Global Z-axis')
+        ax.set_title('Time = ' + str(np.round(data_r2.loc[frame, 'time'],decimals=2)) + ' sec')
+
+        # Get rid of number on grids
+        ax.axes.xaxis.set_ticklabels([])
+        ax.axes.yaxis.set_ticklabels([])
+        ax.axes.zaxis.set_ticklabels([])
+
+        # Get rid of colored axes planes
+        # First remove fill
+        ax.xaxis.pane.fill = False
+        ax.yaxis.pane.fill = False
+        ax.zaxis.pane.fill = False
+        # Now set color to white (or whatever is "invisible")
+        ax.xaxis.pane.set_edgecolor('w')
+        ax.yaxis.pane.set_edgecolor('w')
+        ax.zaxis.pane.set_edgecolor('w')
+
+        # Set plot limits based on 'plot_limit' variable:
+        ax.set_xlim3d(-plot_limit, plot_limit)
+        ax.set_ylim3d(-plot_limit, plot_limit)
+        ax.set_zlim3d(-plot_limit, plot_limit)
+
+
+        # Second Figure:
+        if ((num_rows == 2) and (view_Euler)):
+            ax2.clear()
+            ax2.plot(data_r2.loc[:frame, 'time'], data_r2.loc[:frame, 'roll_x'],'-', c = x_axis_color  ,label="Roll")
+            ax2.plot(data_r2.loc[:frame, 'time'], data_r2.loc[:frame, 'pitch_y'], '-', c = y_axis_color , label="Pitch")
+            ax2.plot(data_r2.loc[:frame, 'time'], data_r2.loc[:frame, 'yaw_z'], '-', c =  z_axis_color, label="Yaw")
+            ax2.legend(ncol=1, framealpha=0.5, fancybox=False, edgecolor=edge_color, loc='best')
+
+            # Find max for setting ylim:
+            max_y = max(data_r2.roll_x.max(), data_r.pitch_y.max(), data_r.yaw_z.max())
+            min_y = min(data_r2.roll_x.min(), data_r.pitch_y.min(), data_r.yaw_z.min())
+
+            ax2.set_xlim(0, data_r2.time.max()*1.05)
+            ax2.set_ylim(min_y, max_y*1.05)
+            ax2.tick_params(which='major', width=1, length=7,  direction='in', bottom = True, top= True, left= True, right= True) # set major thicks (optional)
+            ax2.tick_params(which='minor', width=1, length=3,  direction='in', bottom = True, top= True, left= True, right= True) # set minor thicks (optional)
+            ax2.set_xlabel('Time [s]')
+            ax2.set_ylabel("Euler Angles  [degrees $^{\circ}$]")
+            ax2.minorticks_on()  # Turns minor thicks on (optional)
+            ax2.grid()           # Shows grid
+        elif ((num_rows == 2) and (view_quat)):
+            ax2.clear()
+            ax2.plot(data_r2.loc[:frame, 'time'], data_r2.loc[:frame, 'a'],'-', c = x_axis_color  ,label="a")
+            ax2.plot(data_r2.loc[:frame, 'time'], data_r2.loc[:frame, 'b'], '-', c = y_axis_color , label="b")
+            ax2.plot(data_r2.loc[:frame, 'time'], data_r2.loc[:frame, 'c'], '-', c =  z_axis_color, label="c")
+            ax2.plot(data_r2.loc[:frame, 'time'], data_r2.loc[:frame, 'd'], '-', c =  'y', label="d")
+            ax2.legend(ncol=1, framealpha=0.5, fancybox=False, edgecolor=edge_color, loc='best')
+
+            # Find max for setting ylim:
+            max_y = max(data_r2.a.max(), data_r.b.max(), data_r.c.max() , data_r.d.max() )
+            min_y = min(data_r2.a.min(), data_r.b.min(), data_r.c.min() , data_r.d.min())
+
+            ax2.set_xlim(0, data_r2.time.max()*1.05)
+            ax2.set_ylim(min_y, max_y*1.05)
+            ax2.tick_params(which='major', width=1, length=7,  direction='in', bottom = True, top= True, left= True, right= True) # set major thicks (optional)
+            ax2.tick_params(which='minor', width=1, length=3,  direction='in', bottom = True, top= True, left= True, right= True) # set minor thicks (optional)
+            ax2.set_xlabel('Time [s]')
+            ax2.set_ylabel("Value [-]")
+            ax2.minorticks_on()  # Turns minor thicks on (optional)
+            ax2.grid()           # Shows grid
+
+
+        if (num_rows == 3):
+
+            # Second Figure
+            ax2.clear()
+            ax2.plot(data_r2.loc[:frame, 'time'], data_r2.loc[:frame, 'roll_x'],'-', c = x_axis_color  ,label="Roll")
+            ax2.plot(data_r2.loc[:frame, 'time'], data_r2.loc[:frame, 'pitch_y'], '-', c = y_axis_color , label="Pitch")
+            ax2.plot(data_r2.loc[:frame, 'time'], data_r2.loc[:frame, 'yaw_z'], '-', c =  z_axis_color, label="Yaw")
+            ax2.legend(ncol=1, framealpha=0.5, fancybox=False, edgecolor=edge_color, loc='best')
+
+            # Find max for setting ylim:
+            max_y = max(data_r2.roll_x.max(), data_r.pitch_y.max(), data_r.yaw_z.max())
+            min_y = min(data_r2.roll_x.min(), data_r.pitch_y.min(), data_r.yaw_z.min())
+
+            ax2.set_xlim(0, data_r2.time.max()*1.05)
+            ax2.set_ylim(min_y, max_y*1.05)
+            ax2.tick_params(which='major', width=1, length=7,  direction='in', bottom = True, top= True, left= True, right= True) # set major thicks (optional)
+            ax2.tick_params(which='minor', width=1, length=3,  direction='in', bottom = True, top= True, left= True, right= True) # set minor thicks (optional)
+            ax2.set_xlabel('Time [s]')
+            ax2.set_ylabel("Euler Angles  [degrees $^{\circ}$]")
+            ax2.minorticks_on()  # Turns minor thicks on (optional)
+            ax2.grid()           # Shows grid
+       
+
+            # Third Figure:
+            ax3.clear()
+            ax3.plot(data_r2.loc[:frame, 'time'], data_r2.loc[:frame, 'a'],'-', c = x_axis_color  ,label="a")
+            ax3.plot(data_r2.loc[:frame, 'time'], data_r2.loc[:frame, 'b'], '-', c = y_axis_color , label="b")
+            ax3.plot(data_r2.loc[:frame, 'time'], data_r2.loc[:frame, 'c'], '-', c =  z_axis_color, label="c")
+            ax3.plot(data_r2.loc[:frame, 'time'], data_r2.loc[:frame, 'd'], '-', c =  'y', label="d")
+            ax3.legend(ncol=1, framealpha=0.5, fancybox=False, edgecolor=edge_color, loc='best')
+
+            # Find max for setting ylim:
+            max_y = max(data_r2.a.max(), data_r.b.max(), data_r.c.max() , data_r.d.max() )
+            min_y = min(data_r2.a.min(), data_r.b.min(), data_r.c.min() , data_r.d.min())
+
+            ax3.set_xlim(0, data_r2.time.max()*1.05)
+            ax3.set_ylim(min_y, max_y*1.05)
+            ax3.tick_params(which='major', width=1, length=7,  direction='in', bottom = True, top= True, left= True, right= True) # set major thicks (optional)
+            ax3.tick_params(which='minor', width=1, length=3,  direction='in', bottom = True, top= True, left= True, right= True) # set minor thicks (optional)
+            ax3.set_xlabel('Time [s]')
+            ax3.set_ylabel("Value [-]")
+            ax3.minorticks_on()  # Turns minor thicks on (optional)
+            ax3.grid()           # Shows grid
+
+
+
+    # Define the Animation
+    ani = animation.FuncAnimation(fig, update, frames=num_frame, interval=frame_delay)
+    plt.close()
+
+    # Saving the Animation
+    file_name = file_path.split('/')[-1][:-4] + '_animation.gif'
+    f = '/content/' + file_name  # This only works in Google Colab!!
+    writergif = animation.PillowWriter(fps=num_frame/8)
+    ani.save(f, writer=writergif)
+
+    # Render gif on Google Colab notebook:
+    return Image(open(file_name,'rb').read())
