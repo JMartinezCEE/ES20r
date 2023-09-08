@@ -3,93 +3,13 @@ This file contains code used in ES20r Sports of Physics,
 by Jason Martinez (jmartinez@seas.harvard.edu).
 https://www.seas.harvard.edu/computing-engineering-education
 
-Last Modified: 09/23/2022
+Last Modified: 09/08/2023
 """
 
 # Import Libraries:
 import pandas as pd                 # Python library for data manipulation and analysis
 import matplotlib.pyplot as plt     # Python library for data visualization
 import numpy as np                  # Numerical Python   
-
-
-def prep_data(file_path):
-    """
-    Description:
-        Function for data prep of any Komotion .csv datafile
-
-    Input:
-        file_path: string containing the file path location (or URL link) of your .csv
-
-    Output: (returns dataframes from each configuration, in alphabetical order)
-        data_a: dataframe with acceleration (a) data
-        data_g: dataframe with gyroscipic (g) data - angular velocity
-        data_l: dataframe with linear acceleration (l) data
-        data_m: dataframe with magnetometer (m) data
-        data_r: dataframe with rotation vector (r) data
-    """ 
-    # Import Libraries:
-    import pandas as pd                 # Python library for data manipulation and analysis
-    import matplotlib.pyplot as plt     # Python library for data visualization
-    import numpy as np                  # Numerical Python
-
-    # ---------------- Load Data File-------------------------
-    # Load csv content into a Pandas dataframe:
-    data = pd.read_csv(file_path, header=None)  # First argument is path to file; `header=None` tells Panda ... 
-                                                          # ... that the .csv file does not have a header row with column names
-
-    # Pandas may read column 4 as a column of strings, rather than a float (i.e, decimal number), if it contains missing entries. 
-    if data[4].dtypes == 'object':  # if the datatype of column 4 of data is an 'object' (i.e., a string), convert to numerical
-        data[4] = pd.to_numeric(data[4], errors='coerce')
-
-
-    #------------------Separate Data based on configurations---------------
-    # Filter 'data' based on contents of column 0 (i.e., a, m, l, r, g)
-    data_a = data[data[0] == 'a'].copy()  # Filter 'data' by 'data[0] == a', and copy to a new dataframe 'data_a`.
-    data_m = data[data[0] == 'm'].copy()
-    data_l = data[data[0] == 'l'].copy()
-    data_g = data[data[0] == 'g'].copy()
-    data_r = data[data[0] == 'r'].copy()
-
-    # Remove column #0 (no longer required), and column #4 (only for data_a, data_m, data_l, and data_g):
-    data_a.drop(columns=[0, 4], inplace=True)   # Remove column '0' and '4'.
-    data_m.drop(columns=[0, 4], inplace=True)   # Remove column '0' and '4'.
-    data_l.drop(columns=[0, 4], inplace=True)   # Remove column '0' and '4'.
-    data_g.drop(columns=[0, 4], inplace=True)   # Remove column '0' and '4'.
-    data_r.drop(columns=[0], inplace=True)      # Only remove column '0' for data_r.
-
-    # Rename columns of each dataframe: (Note that order is important and matches what is described in sensor usermanual) 
-    data_a.columns = ['ax', 'ay', 'az', 'time'] 
-    data_m.columns = ['mx', 'my', 'mz', 'time']
-    data_l.columns = ['lx', 'ly', 'lz', 'time']
-    data_g.columns = ['gx', 'gy', 'gz', 'time']
-    data_r.columns = ['a', 'b', 'c', 'd', 'time'] # a, b, c, d, from quanterion: q = a + bi + cj + dk
-
-    # Reset Index: Make the row numbering (i.e., index) start at 0, 1, 2, ...
-    data_a.reset_index(inplace=True, drop=True)
-    data_m.reset_index(inplace=True, drop=True)
-    data_l.reset_index(inplace=True, drop=True)
-    data_g.reset_index(inplace=True, drop=True)
-    data_r.reset_index(inplace=True, drop=True)
-
-
-    # ---------------------Convert quaternion to Euler angles----------------------
-    # Compute Roll:
-    t0 = 2.0 * (data_r.a * data_r.b + data_r.c * data_r.d)
-    t1 = +1.0 - 2.0 * (data_r.b * data_r.b + data_r.c * data_r.c)
-    data_r['roll_x'] = np.degrees(np.arctan2(t0, t1))  # Store roll in 'data_r', under a new column named 'roll_x'
-
-    # Compute Pitch:
-    t2 = +2.0 * (data_r.a * data_r.c - data_r.d * data_r.b)
-    t2 = np.clip(t2, a_min=-1.0, a_max=1.0)
-    data_r['pitch_y'] = np.degrees(np.arcsin(t2))      # Store pitch in 'data_r', under a new column named 'pitch_y'
-
-    # Compute Yaw:
-    t3 = +2.0 * (data_r.a * data_r.d + data_r.b * data_r.c)
-    t4 = +1.0 - 2.0 * (data_r.c * data_r.c + data_r.d * data_r.d)
-    data_r['yaw_z'] = np.degrees(np.arctan2(t3, t4))    # Store yaw in 'data_r', under a new column named 'yaw_z'
-
-    # ---------------------Return Dataframes----------------------
-    return data_a, data_g, data_l, data_m, data_r
 
 
 def plot_data(file_path, dark_mode=False, quaternion=False):
@@ -1306,7 +1226,7 @@ def data_prep(data):
         Function for data prep of any Komotion csv datafile
 
     Input:
-        file_path: string containing the file path location (or URL link) of your .csv
+        data: Pandas DataFrame containing the raw Komotion data file. 
 
     Output: (returns dataframes from each configuration, in alphabetical order)
         data_a: dataframe with acceleration (a) data
@@ -1315,6 +1235,11 @@ def data_prep(data):
         data_m: dataframe with magnetometer (m) data
         data_r: dataframe with rotation vector (r) data
     """ 
+
+    # Import Libraries:
+    import pandas as pd                 # Python library for data manipulation and analysis
+    import matplotlib.pyplot as plt     # Python library for data visualization
+    import numpy as np                  # Numerical Python
   
     # Pandas may read column 4 as a column of strings, rather than a float (i.e, decimal number), if it contains missing entries. 
     if data[4].dtypes == 'object':  # if the datatype of column 4 of data is an 'object' (i.e., a string), convert to numerical
