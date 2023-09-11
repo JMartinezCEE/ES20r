@@ -628,7 +628,7 @@ def view_quat(a=1, b=0, c=0, d=0, dark_mode=False, swap_xy=False):
     t = ax2.text(text_position[0], text_position[1], text_position[2], s=quat_string, fontsize=12, color=text_color, fontfamily='serif', backgroundcolor=text_background)
     t.set_bbox(dict(facecolor=text_background, alpha=text_background_alpha, linewidth=0))
 
-    fig.tight_layout(pad=2.0)  # To add padding between subplots.
+    #fig.tight_layout(pad=2.0)  # To add padding between subplots.
     plt.show()                 # To show the plot.
     fig.savefig('Quaternion_Figure.png', dpi=400, bbox_inches='tight')   # To save the entire figure.
 
