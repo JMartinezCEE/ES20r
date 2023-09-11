@@ -1036,8 +1036,8 @@ def view_orientation(data, dark_mode=False, view_Euler=False, view_quat=False, s
    
     # Attaching 3D axis to the figure
     fig = plt.figure()
-    fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.2, hspace=0.2)
-    #ax = fig.add_subplot(num_rows, num_cols, 1, projection="3d")  # First Plot is always the orientation animation   'auto', 'equal', 'equalxy', 'equalyz', 'equalxz'
+    #fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.2, hspace=0.2)
+    ax = fig.add_subplot(num_rows, num_cols, 1, projection="3d")  # First Plot is always the orientation animation   'auto', 'equal', 'equalxy', 'equalyz', 'equalxz'
     if swap_xy:
         ax.view_init(30, 50) # view
 
