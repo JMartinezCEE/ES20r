@@ -274,7 +274,10 @@ def plot_data(data, dark_mode=False, quaternion=False):
 
     fig.tight_layout(pad=2.0)  # To add padding between subplots.
     plt.show()                 # To show the plot.
-    fig.savefig(file_path.split('/')[-1][:-4] + '_Figure.png', dpi=400, bbox_inches='tight')   # To save the entire figure.
+    jj = 1
+    fig.savefig('Figure_'+str(jj)+'.png', dpi=400, bbox_inches='tight')   # To save the entire figure.
+    jj += 1  # update
+    # fig.savefig(file_path.split('/')[-1][:-4] + '_Figure.png', dpi=400, bbox_inches='tight')   # To save the entire figure.
 
 
 def rot_mat(a, b, c, d):
