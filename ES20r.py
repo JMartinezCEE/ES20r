@@ -12,18 +12,18 @@ import matplotlib.pyplot as plt     # Python library for data visualization
 import numpy as np                  # Numerical Python   
 
 
-def plot_data(file_path, dark_mode=False, quaternion=False):
+def plot_data(data, dark_mode=False, quaternion=False):
     """
     Input:
-        file_path: string containing the file path location (or URL link) of your .csv
+        data: Pandas DataFrame containing the raw Komotion data file.
         dark_mode: Boolean variable for dark mode plotting: 'True' for dark mode plotting; 'False' for white background
         quaternion: Boolean variable for plotting Quaternions: 'True' for plotting quaternions; 'False' for plotting Euler angles
     Output: None
         The function renders the figure of your data and saves the image as a .png file. 
     """ 
 
-    # Call prep_data() to prep and tidy the data:
-    data_a, data_g, data_l, data_m, data_r = prep_data(file_path)
+    # Call data_prep() to prep and tidy the data:
+    data_a, data_g, data_l, data_m, data_r = data_prep(data)
 
     
     #----------------------------- Plot Data---------------------------
