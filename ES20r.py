@@ -3,7 +3,7 @@ This file contains code used in ES20r Sports of Physics,
 by Jason Martinez (jmartinez@seas.harvard.edu).
 https://www.seas.harvard.edu/computing-engineering-education
 
-Last Modified: 09/08/2023
+Last Modified: 09/11/2023
 """
 
 # Import Libraries:
@@ -901,10 +901,10 @@ def view_Euler(yaw_z=0, pitch_y=0, roll_x=0, intrinsic=True, sequence='zyx', rad
     fig.savefig('Euler_angle_Figure.png', dpi=400, bbox_inches='tight')   # To save the entire figure.
 
 
-def view_orientation(file_path, dark_mode=False, view_Euler=False, view_quat=False, swap_xy=False, num_frame=50, frame_delay=200):
+def view_orientation(data, dark_mode=False, view_Euler=False, view_quat=False, swap_xy=False, num_frame=50, frame_delay=200):
     """
     Input:
-        file_path: string containing the file path location (or URL link) of your .csv.
+        data: Pandas DataFrame containing the raw Komotion data file.
         dark_mode: Boolean variable for dark mode plotting: 'True' for dark mode plotting; 'False' for white background.
         view_Euler: Boolean variable for showing plot of Euler angles animate alongside the orientation animation
         view_quat: Boolean variable for showing plot of quaternions animate alongside the orientation animation 
@@ -923,8 +923,8 @@ def view_orientation(file_path, dark_mode=False, view_Euler=False, view_quat=Fal
     from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection  # Library for 3D rendering.
     from IPython.display import Image   # For rendering gif on notebook.
 
-    # Call prep_data() to prep and tidy the data:
-    data_a, data_g, data_l, data_m, data_r = prep_data(file_path)
+    # Call data_prep() to prep and tidy the data:
+    data_a, data_g, data_l, data_m, data_r = data_prep(data)
 
 
     #===========Adjust data_r to have size of 'num_frame'====================
@@ -1036,7 +1036,8 @@ def view_orientation(file_path, dark_mode=False, view_Euler=False, view_quat=Fal
    
     # Attaching 3D axis to the figure
     fig = plt.figure()
-    ax = fig.add_subplot(num_rows, num_cols, 1, projection="3d")  # First Plot is always the orientation animation
+    fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=0.2, hspace=0.2)
+    #ax = fig.add_subplot(num_rows, num_cols, 1, projection="3d")  # First Plot is always the orientation animation   'auto', 'equal', 'equalxy', 'equalyz', 'equalxz'
     if swap_xy:
         ax.view_init(30, 50) # view
 
@@ -1283,7 +1284,7 @@ def view_orientation(file_path, dark_mode=False, view_Euler=False, view_quat=Fal
     plt.close()
 
     # Saving the Animation
-    file_name = file_path.split('/')[-1][:-4] + '_animation.gif'
+    file_name = 'orientation_animation.gif'
     f = '/content/' + file_name  # This only works in Google Colab!!
     writergif = animation.PillowWriter(fps=num_frame/8)
     ani.save(f, writer=writergif)
