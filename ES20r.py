@@ -896,7 +896,7 @@ def view_Euler(yaw_z=0, pitch_y=0, roll_x=0, intrinsic=True, sequence='zyx', rad
     t.set_bbox(dict(facecolor=text_background, alpha=text_background_alpha, linewidth=0))
     
 
-    fig.tight_layout(pad=2.0)  # To add padding between subplots.
+    #fig.tight_layout(pad=2.0)  # To add padding between subplots.
     plt.show()                 # To show the plot.
     fig.savefig('Euler_angle_Figure.png', dpi=400, bbox_inches='tight')   # To save the entire figure.
 
