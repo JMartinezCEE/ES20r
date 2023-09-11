@@ -42,7 +42,6 @@ def plot_data(data, dark_mode=False, quaternion=False):
       edge_color = 'black'  # set color for legend box to black
 
     # Find out how many unique configurations exists in the datafile:
-    data = pd.read_csv(file_path, header=None)
     if data[4].dtypes == 'object':  # if the datatype of column 4 of data is an 'object' (i.e., a string), convert to numerical
         data[4] = pd.to_numeric(data[4], errors='coerce')
     config = data.loc[:,0].unique() 
