@@ -82,26 +82,38 @@ def data_prep(data):
     return data_a, data_g, data_l, data_m, data_r
 
 
-def plot_data(data, dark_mode=False, quaternion=False):
+def plot_data(data, bounds=False, min=0, max=5, x_plot=True, y_plot=True, z_plot=True, mag=False, dark_mode=False, quaternion=False):
     """
     Input:
         data: Pandas DataFrame containing the raw Komotion data file.
+        bounds: Bolean variable to turn on plotting with bounds
+        min: float variable for left bound on plots
+        max: float variable for right bound on plots
+        x_plot: Boolean variable to turn on plotting from the x-component
+        y_plot: Boolean variable to turn on plotting from the y-component
+        z_plot: Boolean variable to turn on plotting from the z-component
+        mag: Boolean varaible to turn on magnitude plotting
         dark_mode: Boolean variable for dark mode plotting: 'True' for dark mode plotting; 'False' for white background
         quaternion: Boolean variable for plotting Quaternions: 'True' for plotting quaternions; 'False' for plotting Euler angles
     Output: None
-        The function renders the figure of your data and saves the image as a .png file. 
-    """ 
+        The function renders the figure of your data and saves the image as a .png file.
+    """
 
     # Call data_prep() to prep and tidy the data:
     data_a, data_g, data_l, data_m, data_r = data_prep(data)
 
-    
+
+    # ------------------------ Create Magnitudes ------------------
+    data_a['a_mag'] = (data_a.ax**2 + data_a.ay**2 + data_a.az**2)**0.5
+    data_l['l_mag'] = (data_l.lx**2 + data_l.ly**2 + data_l.lz**2)**0.5
+
+
     #----------------------------- Plot Data---------------------------
     # Reset default matplotlib settings:
     plt.rcdefaults()
 
     # set global parameters for plotting (optional):
-    fs = 14        # desired font size for figure text. 
+    fs = 14        # desired font size for figure text.
     plt.rcParams["font.family"] = "serif"  # Set font style globally to serif (much nicer than default font style).
 
     # Set dark mode style on if dark_mode == True:
@@ -114,7 +126,7 @@ def plot_data(data, dark_mode=False, quaternion=False):
     # Find out how many unique configurations exists in the datafile:
     if data[4].dtypes == 'object':  # if the datatype of column 4 of data is an 'object' (i.e., a string), convert to numerical
         data[4] = pd.to_numeric(data[4], errors='coerce')
-    config = data.loc[:,0].unique() 
+    config = data.loc[:,0].unique()
 
     # Determine the number of plots:
     num_plots = len(config) + 1
@@ -146,14 +158,23 @@ def plot_data(data, dark_mode=False, quaternion=False):
 
     if('a' in config):
         ax = axes[cur_row][cur_col] if (num_plots > 2) else axes[cur_col] # Ternary logical for if-else, to determine correct definition of 'axes'.
-        ax.plot(data_a.time, data_a.ax,'r', label="$a_x$")   # Plots time vs. ax
-        ax.plot(data_a.time, data_a.ay, 'y', label="$a_y$")  # Plots time vs. ay
-        ax.plot(data_a.time, data_a.az, 'b', label="$a_z$")  # Plots time vs. az
+        if x_plot:
+            ax.plot(data_a.time, data_a.ax,'r', label="$a_x$")   # Plots time vs. ax
+        if y_plot:
+            ax.plot(data_a.time, data_a.ay, 'y', label="$a_y$")  # Plots time vs. ay
+        if z_plot:
+            ax.plot(data_a.time, data_a.az, 'b', label="$a_z$")  # Plots time vs. az
+        if mag:
+            ax.plot(data_a.time, data_a.a_mag, 'g', label="$a_{mag}$")  # Plots time vs. a_mag
+
+        ax.set_title("Sensor's Acceleration Data")
+        ax.set_xlabel('Time [s]', fontsize=fs)  # Set x-label
+        ax.set_ylabel("Acceleration $[\mathrm{m/s^2}]$", fontsize=fs)  # Set y-label
+        if bounds:
+            ax.set_xlim(min, max)
         ax.legend(fontsize=fs, ncol=1, framealpha=0.5, fancybox=False, edgecolor=edge_color, loc='best')  # Creates legend.
         ax.tick_params(which='major', labelsize=fs, width=1, length=7,  direction='in', bottom = True, top= True, left= True, right= True) # set major thicks (optional)
         ax.tick_params(which='minor', labelsize=fs, width=1, length=3,  direction='in', bottom = True, top= True, left= True, right= True) # set minor thicks (optional)
-        ax.set_xlabel('Time [s]', fontsize=fs)  # Set x-label
-        ax.set_ylabel("Acceleration $[\mathrm{m/s^2}]$", fontsize=fs)  # Set y-label
         ax.minorticks_on()  # Turns minor thicks on (optional)
         ax.grid()           # Shows grid
 
@@ -163,15 +184,24 @@ def plot_data(data, dark_mode=False, quaternion=False):
             cur_row +=1
 
     if('l' in config):
-        ax = axes[cur_row][cur_col] if (num_plots > 2) else axes[cur_col] # Ternary logical for if-else 
-        ax.plot(data_l.time, data_l.lx,'r', label="$l_x$")
-        ax.plot(data_l.time, data_l.ly, 'y', label="$l_y$")
-        ax.plot(data_l.time, data_l.lz, 'b', label="$l_z$")
-        ax.legend(fontsize=fs, ncol=1, framealpha=0.5, fancybox=False, edgecolor=edge_color, loc='best')
+        ax = axes[cur_row][cur_col] if (num_plots > 2) else axes[cur_col] # Ternary logical for if-else
+        if x_plot:
+            ax.plot(data_l.time, data_l.lx,'r', label="$l_x$")   # Plots time vs. lx
+        if y_plot:
+            ax.plot(data_l.time, data_l.ly, 'y', label="$l_y$")  # Plots time vs. ly
+        if z_plot:
+            ax.plot(data_l.time, data_l.lz, 'b', label="$l_z$")  # Plots time vs. lz
+        if mag:
+            ax.plot(data_l.time, data_l.l_mag, 'g', label="$l_{mag}$")  # Plots time vs. l_mag
+
+        ax.set_title("Sensor's Linear Acceleration Data")
+        ax.set_xlabel('Time [s]', fontsize=fs)  # Set x-label
+        ax.set_ylabel("Acceleration $[\mathrm{m/s^2}]$", fontsize=fs)  # Set y-label
+        if bounds:
+            ax.set_xlim(min, max)
+        ax.legend(fontsize=fs, ncol=1, framealpha=0.5, fancybox=False, edgecolor=edge_color, loc='best')  # Creates legend.
         ax.tick_params(which='major', labelsize=fs, width=1, length=7,  direction='in', bottom = True, top= True, left= True, right= True) # set major thicks (optional)
         ax.tick_params(which='minor', labelsize=fs, width=1, length=3,  direction='in', bottom = True, top= True, left= True, right= True) # set minor thicks (optional)
-        ax.set_xlabel('Time [s]', fontsize=fs)
-        ax.set_ylabel("Acceleration $[\mathrm{m/s^2}]$", fontsize=fs)
         ax.minorticks_on()  # Turns minor thicks on (optional)
         ax.grid()           # Shows grid
 
@@ -182,14 +212,21 @@ def plot_data(data, dark_mode=False, quaternion=False):
 
     if('g' in config):
         ax = axes[cur_row][cur_col] if (num_plots > 2) else axes[cur_col] # Ternary logical for if-else
-        ax.plot(data_g.time, data_g.gx,'r', label="$\omega_x$")
-        ax.plot(data_g.time, data_g.gy, 'y', label="$\omega_y$")
-        ax.plot(data_g.time, data_g.gz, 'b', label="$\omega_z$")
+        if x_plot==True:
+            ax.plot(data_g.time, data_g.gx,'r', label="$\omega_x$")
+        if y_plot==True:
+            ax.plot(data_g.time, data_g.gy, 'y', label="$\omega_y$")
+        if z_plot==True:
+            ax.plot(data_g.time, data_g.gz, 'b', label="$\omega_z$")
+
+        ax.set_title("Sensor's Angular Velocity Data")
+        ax.set_xlabel('Time [s]', fontsize=fs)
+        ax.set_ylabel("Angular Velocity $[\mathrm{rad/s}]$", fontsize=fs)
+        if bounds == True:
+            ax.set_xlim(min, max)
         ax.legend(fontsize=fs, ncol=1, framealpha=0.5, fancybox=False, edgecolor=edge_color, loc='best')
         ax.tick_params(which='major', labelsize=fs, width=1, length=7,  direction='in', bottom = True, top= True, left= True, right= True) # set major thicks (optional)
         ax.tick_params(which='minor', labelsize=fs, width=1, length=3,  direction='in', bottom = True, top= True, left= True, right= True) # set minor thicks (optional)
-        ax.set_xlabel('Time [s]', fontsize=fs)
-        ax.set_ylabel("Angular Velocity $[\mathrm{rad/s}]$", fontsize=fs)
         ax.minorticks_on()  # Turns minor thicks on (optional)
         ax.grid()           # Shows grid
 
@@ -200,14 +237,21 @@ def plot_data(data, dark_mode=False, quaternion=False):
 
     if('m' in config):
         ax = axes[cur_row][cur_col] if (num_plots > 2) else axes[cur_col] # Ternary logical for if-else
-        ax.plot(data_m.time, data_m.mx,'r', label="$m_x$")
-        ax.plot(data_m.time, data_m.my, 'y', label="$m_y$")
-        ax.plot(data_m.time, data_m.mz, 'b', label="$m_z$")
+        if x_plot:
+            ax.plot(data_m.time, data_m.mx,'r', label="$m_x$")
+        if y_plot:
+            ax.plot(data_m.time, data_m.my, 'y', label="$m_y$")
+        if z_plot:
+            ax.plot(data_m.time, data_m.mz, 'b', label="$m_z$")
+
+        ax.set_title("Sensor's Magnetic Field Data")
+        ax.set_xlabel('Time [s]', fontsize=fs)
+        ax.set_ylabel("Magnetic Field  $[\mu \mathrm{T}]$", fontsize=fs)
+        if bounds == True:
+            ax.set_xlim(min, max)
         ax.legend(fontsize=fs, ncol=1, framealpha=0.5, fancybox=False, edgecolor=edge_color, loc='best')
         ax.tick_params(which='major', labelsize=fs, width=1, length=7,  direction='in', bottom = True, top= True, left= True, right= True) # set major thicks (optional)
         ax.tick_params(which='minor', labelsize=fs, width=1, length=3,  direction='in', bottom = True, top= True, left= True, right= True) # set minor thicks (optional)
-        ax.set_xlabel('Time [s]', fontsize=fs)
-        ax.set_ylabel("Magnetic Field  $[\mu \mathrm{T}]$", fontsize=fs)
         ax.minorticks_on()  # Turns minor thicks on (optional)
         ax.grid()           # Shows grid
 
@@ -223,24 +267,35 @@ def plot_data(data, dark_mode=False, quaternion=False):
             ax.plot(data_r.time, data_r['b'], 'y', label="b")
             ax.plot(data_r.time, data_r['c'], 'b', label="c")
             ax.plot(data_r.time, data_r['d'], 'g', label="d")
+
+            ax.set_title("Sensor's Rotational Data")
+            ax.set_xlabel('Time [s]', fontsize=fs)
+            ax.set_ylabel("Value  [-]", fontsize=fs)
+            if bounds == True:
+                ax.set_xlim(min, max)
+            ax.set_ylim([-1, 1])  # Set Y limits
             ax.legend(fontsize=fs, ncol=1, framealpha=0.5, fancybox=False, edgecolor=edge_color, loc='best')
             ax.tick_params(which='major', labelsize=fs, width=1, length=7,  direction='in', bottom = True, top= True, left= True, right= True) # set major thicks (optional)
             ax.tick_params(which='minor', labelsize=fs, width=1, length=3,  direction='in', bottom = True, top= True, left= True, right= True) # set minor thicks (optional)
-            ax.set_xlabel('Time [s]', fontsize=fs)
-            ax.set_ylabel("Value  [-]", fontsize=fs)
-            ax.set_ylim([-1, 1])  # Set Y limits
             ax.minorticks_on()    # Turns minor thicks on (optional)
             ax.grid()             # Shows grid
         else:
             ax = axes[cur_row][cur_col] if (num_plots > 2) else axes[cur_col] # Ternary logical for if-else
-            ax.plot(data_r.time, data_r['roll_x'],'r', label="Roll")
-            ax.plot(data_r.time, data_r['pitch_y'], 'y', label="Pitch")
-            ax.plot(data_r.time, data_r['yaw_z'], 'b', label="Yaw")
+            if x_plot:
+                ax.plot(data_r.time, data_r['roll_x'],'r', label="Roll")
+            if y_plot:
+                ax.plot(data_r.time, data_r['pitch_y'], 'y', label="Pitch")
+            if z_plot:
+                ax.plot(data_r.time, data_r['yaw_z'], 'b', label="Yaw")
+
+            ax.set_title("Sensor's Rotational Data")
+            ax.set_xlabel('Time [s]', fontsize=fs)
+            ax.set_ylabel("Euler Angles  [degrees $^{\circ}$]", fontsize=fs)
+            if bounds == True:
+                ax.set_xlim(min, max)
             ax.legend(fontsize=fs, ncol=1, framealpha=0.5, fancybox=False, edgecolor=edge_color, loc='best')
             ax.tick_params(which='major', labelsize=fs, width=1, length=7,  direction='in', bottom = True, top= True, left= True, right= True) # set major thicks (optional)
             ax.tick_params(which='minor', labelsize=fs, width=1, length=3,  direction='in', bottom = True, top= True, left= True, right= True) # set minor thicks (optional)
-            ax.set_xlabel('Time [s]', fontsize=fs)
-            ax.set_ylabel("Euler Angles  [degrees $^{\circ}$]", fontsize=fs)
             ax.minorticks_on()  # Turns minor thicks on (optional)
             ax.grid()           # Shows grid
 
@@ -265,6 +320,8 @@ def plot_data(data, dark_mode=False, quaternion=False):
     ax.legend(fontsize=fs, ncol=1, framealpha=0.5, fancybox=False, edgecolor=edge_color, loc='best')
     ax.tick_params(which='major', labelsize=fs, width=1, length=7,  direction='in', bottom = True, top= True, left= True, right= True) # set major thicks (optional)
     ax.tick_params(which='minor', labelsize=fs, width=1, length=3,  direction='in', bottom = True, top= True, left= True, right= True) # set minor thicks (optional)
+    if bounds == True:
+        ax.set_xlim(min, max)
     ax.set_xlabel('Time [s]', fontsize=fs)
     ax.set_ylabel("Sample Counts", fontsize=fs)
     from matplotlib.ticker import StrMethodFormatter  # required import to ensure interger values on y-axis of 'Sample Count'
@@ -274,11 +331,8 @@ def plot_data(data, dark_mode=False, quaternion=False):
 
     fig.tight_layout(pad=2.0)  # To add padding between subplots.
     plt.show()                 # To show the plot.
-    jj = 1
-    fig.savefig('Figure_'+str(jj)+'.png', dpi=400, bbox_inches='tight')   # To save the entire figure.
-    jj += 1  # update
-    # fig.savefig(file_path.split('/')[-1][:-4] + '_Figure.png', dpi=400, bbox_inches='tight')   # To save the entire figure.
-
+    fig.savefig('Figure.png', dpi=400, bbox_inches='tight')   # To save the entire figure.
+    
 
 def rot_mat(a, b, c, d):
     """
